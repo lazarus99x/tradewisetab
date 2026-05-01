@@ -40,6 +40,21 @@ export function SignalsList() {
     if (!user?.id) return toast.error("Sign in to trade");
     setLoading(true);
     try {
+      // Check user balance
+      const { data: balanceData } = await supabase
+        .from("user_balances")
+        .select("account_balance, balance, trading_balance")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const availableBalance = Number(balanceData?.trading_balance || balanceData?.account_balance || balanceData?.balance || 0);
+
+      if (availableBalance < 50) {
+        toast.error("Low balance! Minimum $50 required to follow AI signals.");
+        setLoading(false);
+        return;
+      }
+
       const { data: md } = await supabase
         .from("market_data")
         .select("price")
@@ -57,7 +72,6 @@ export function SignalsList() {
         price,
         total_value,
         status: "pending",
-        signal_id: signal.id,
       });
       if (error) throw error;
       toast.success("Order created for admin approval");

@@ -190,7 +190,7 @@ export function ForexCandles({ symbol, height = 220 }: ForexCandlesProps) {
                 const bodyY = Math.min(yOpen, yClose);
                 const bodyH = Math.max(1, Math.abs(yClose - yOpen));
                 return (
-                  <g key={c.time}>
+                  <g key={`${c.time}-${i}`}>
                     <line x1={x + view.bodyW / 2} x2={x + view.bodyW / 2} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
                     <rect x={x} y={bodyY} width={view.bodyW} height={bodyH} fill={color} opacity={0.85} rx={1} />
                   </g>
