@@ -118,6 +118,22 @@ export function SimpleOrderPanel({ asset }: SimpleOrderPanelProps) {
       return;
     }
 
+    if (type === "SELL") {
+      const { data: holding } = await supabase
+        .from("user_holdings")
+        .select("amount")
+        .eq("user_id", user.id)
+        .eq("symbol", asset)
+        .maybeSingle();
+
+      const availableAsset = Number(holding?.amount || 0);
+
+      if (availableAsset < cryptoAmount) {
+        toast.error("You don't have enough Assets to sell.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.from("user_trades").insert({
@@ -190,7 +206,7 @@ export function SimpleOrderPanel({ asset }: SimpleOrderPanelProps) {
             disabled={!amount || Number(amount) <= 0}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            Trade
+            Invest
           </LoadingButton>
           <LoadingButton
             onClick={() => placeOrder("SELL")}
