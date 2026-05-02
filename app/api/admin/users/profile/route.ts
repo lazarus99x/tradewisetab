@@ -109,7 +109,7 @@ export async function POST(request: Request) {
         user_id: userId,
         full_name: fullName || "No name",
         email: email || "",
-        kyc_status: "pending",
+        kyc_status: "unverified",
       })
       .select()
       .single();

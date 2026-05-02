@@ -45,10 +45,19 @@ export async function GET() {
       .limit(1)
       .maybeSingle();
 
+    let currentKycStatus = profile?.kyc_status || "unverified";
+    
+    // Auto-correct false "pending" status if user has never actually submitted documents
+    if (currentKycStatus === "pending" && !latestSub) {
+      currentKycStatus = "unverified";
+      // Auto-heal the database
+      await admin.from("profiles").update({ kyc_status: "unverified" }).eq("user_id", userId);
+    }
+
     // Return KYC status
     return NextResponse.json({
-      isVerified: profile?.kyc_status === "verified",
-      kycStatus: profile?.kyc_status || "pending",
+      isVerified: currentKycStatus === "verified",
+      kycStatus: currentKycStatus,
       rejectionReason: latestSub?.reason || null,
       hasProfile: !!profile,
     });
