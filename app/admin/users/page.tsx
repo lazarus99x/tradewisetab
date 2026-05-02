@@ -218,7 +218,6 @@ export default function AdminUsersPage() {
             user_id: selectedUser.id,
             account_balance: 0,
             profit_balance: 0,
-            loss_balance: 0,
             funding_balance: 0,
           })
           .select()
