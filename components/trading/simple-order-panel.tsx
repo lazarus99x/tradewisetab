@@ -136,7 +136,7 @@ export function SimpleOrderPanel({ asset }: SimpleOrderPanelProps) {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("user_trades").insert({
+      const { error: tradeError } = await supabase.from("user_trades").insert({
         user_id: user.id,
         symbol: asset,
         trade_type: type,
@@ -147,7 +147,47 @@ export function SimpleOrderPanel({ asset }: SimpleOrderPanelProps) {
         status: "pending",
       });
 
-      if (error) throw error;
+      if (tradeError) throw tradeError;
+
+      if (type === "BUY") {
+        const newBalance = balance - totalCost;
+        await supabase
+          .from("user_balances")
+          .update({ account_balance: newBalance })
+          .eq("user_id", user.id);
+          
+        await supabase.from("transactions").insert({
+          user_id: user.id,
+          type: "trade",
+          amount: -totalCost, // Deducting cost
+          description: `Buy Order: ${cryptoAmount.toFixed(4)} ${asset} at $${price}`,
+          status: "completed",
+        });
+      } else {
+        const { data: holding } = await supabase
+          .from("user_holdings")
+          .select("amount")
+          .eq("user_id", user.id)
+          .eq("symbol", asset)
+          .single();
+          
+        if (holding) {
+          const newAmount = Number(holding.amount) - cryptoAmount;
+          await supabase
+            .from("user_holdings")
+            .update({ amount: newAmount })
+            .eq("user_id", user.id)
+            .eq("symbol", asset);
+        }
+
+        await supabase.from("transactions").insert({
+          user_id: user.id,
+          type: "trade",
+          amount: 0,
+          description: `Sell Order Placed: ${cryptoAmount.toFixed(4)} ${asset}`,
+          status: "completed",
+        });
+      }
 
       toast.success(`${type} order submitted! Awaiting approval.`);
       setAmount("");

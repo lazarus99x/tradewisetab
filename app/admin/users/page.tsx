@@ -238,8 +238,6 @@ export default function AdminUsersPage() {
       } else if (transactionType === "deposit") {
         updateData.account_balance =
           (currentBalance.account_balance || 0) + deltaAmount;
-        updateData.funding_balance =
-          (currentBalance.funding_balance || 0) + deltaAmount;
       } else if (
         transactionType === "withdrawal" ||
         transactionType === "loss"

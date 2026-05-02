@@ -190,7 +190,6 @@ export default function AdminFundingPage() {
           user_id: app.user_id,
           account_balance: amount,
           profit_balance: 0,
-          loss_balance: 0,
           funding_balance: amount,
         });
       } else {

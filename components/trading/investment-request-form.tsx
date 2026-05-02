@@ -109,7 +109,7 @@ export function InvestmentRequestForm() {
     try {
       const targetShares = amount / currentPrice;
 
-      const { error } = await supabase.from("investment_requests").insert({
+      const { error: reqError } = await supabase.from("investment_requests").insert({
         user_id: user.id,
         symbol: selectedStock,
         investment_amount: amount,
@@ -118,7 +118,27 @@ export function InvestmentRequestForm() {
         status: "pending",
       });
 
-      if (error) throw error;
+      if (reqError) throw reqError;
+
+      // Deduct balance
+      const newBalance = availableBalance - amount;
+      const { error: balanceError } = await supabase
+        .from("user_balances")
+        .update({ account_balance: newBalance })
+        .eq("user_id", user.id);
+        
+      if (balanceError) console.error("Balance update error:", balanceError);
+
+      // Log transaction
+      const { error: txError } = await supabase.from("transactions").insert({
+        user_id: user.id,
+        type: "investment",
+        amount: -amount, // Negative for debit
+        description: `Investment Request: ${targetShares.toFixed(4)} shares of ${selectedStock}`,
+        status: "completed",
+      });
+      
+      if (txError) console.error("Transaction log error:", txError);
 
       toast.success("Investment request submitted! Awaiting admin approval.");
       setInvestmentAmount("");

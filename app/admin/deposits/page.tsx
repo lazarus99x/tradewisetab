@@ -333,8 +333,6 @@ export default function AdminDepositsPage() {
         // Update balance
         const updateData: any = {
           account_balance: currentBal + parseFloat(request.amount.toString()),
-          funding_balance: fundingBal + parseFloat(request.amount.toString()),
-          trading_balance: tradingBal + parseFloat(request.amount.toString()),
           updated_at: new Date().toISOString(),
         };
 

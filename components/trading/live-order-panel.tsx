@@ -157,7 +157,7 @@ export function LiveOrderPanel({ asset }: LiveOrderPanelProps) {
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("user_trades").insert({
+      const { error: tradeError } = await supabase.from("user_trades").insert({
         user_id: user.id,
         symbol: asset,
         trade_type: orderType.toUpperCase(),
@@ -169,7 +169,47 @@ export function LiveOrderPanel({ asset }: LiveOrderPanelProps) {
         status: "pending",
       });
 
-      if (error) throw error;
+      if (tradeError) throw tradeError;
+
+      if (orderType === "buy") {
+        const newBalance = availableBalance - tradeValue;
+        await supabase
+          .from("user_balances")
+          .update({ account_balance: newBalance })
+          .eq("user_id", user.id);
+          
+        await supabase.from("transactions").insert({
+          user_id: user.id,
+          type: "trade",
+          amount: -tradeValue,
+          description: `Buy Order: ${tradeAmount} ${asset} at $${orderPrice}`,
+          status: "completed",
+        });
+      } else {
+        const { data: holdings } = await supabase
+          .from("user_holdings")
+          .select("amount")
+          .eq("user_id", user.id)
+          .eq("symbol", asset)
+          .single();
+          
+        if (holdings) {
+          const newAmount = Number(holdings.amount) - tradeAmount;
+          await supabase
+            .from("user_holdings")
+            .update({ amount: newAmount })
+            .eq("user_id", user.id)
+            .eq("symbol", asset);
+        }
+
+        await supabase.from("transactions").insert({
+          user_id: user.id,
+          type: "trade",
+          amount: 0,
+          description: `Sell Order Placed: ${tradeAmount} ${asset}`,
+          status: "completed",
+        });
+      }
 
       toast.success(`${orderType === "buy" ? "Trade" : "Sell"} order submitted! Awaiting admin approval.`);
       

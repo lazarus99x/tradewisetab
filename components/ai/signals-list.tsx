@@ -63,7 +63,7 @@ export function SignalsList() {
       const price = Number(md?.price || 0);
       const amount = 1; // default one unit for signal trade
       const total_value = price * amount;
-      const { error } = await supabase.from("user_trades").insert({
+      const { error: tradeError } = await supabase.from("user_trades").insert({
         user_id: user.id,
         symbol: signal.symbol,
         trade_type: signal.signal_type, // BUY/SELL
@@ -73,8 +73,29 @@ export function SignalsList() {
         total_value,
         status: "pending",
       });
-      if (error) throw error;
-      toast.success("Order created for admin approval");
+      if (tradeError) throw tradeError;
+
+      // Deduct balance
+      const newBalance = availableBalance - total_value;
+      const { error: balanceError } = await supabase
+        .from("user_balances")
+        .update({ account_balance: newBalance })
+        .eq("user_id", user.id);
+        
+      if (balanceError) console.error("Balance update error:", balanceError);
+
+      // Log transaction
+      const { error: txError } = await supabase.from("transactions").insert({
+        user_id: user.id,
+        type: "trade",
+        amount: -total_value, // Negative for debit
+        description: `AI Trade (${signal.signal_type}) for ${signal.symbol} at $${price}`,
+        status: "completed",
+      });
+      
+      if (txError) console.error("Transaction log error:", txError);
+
+      toast.success("Trade initiated and logged successfully!");
     } catch (e: any) {
       console.error(e);
       toast.error("Failed to create order");
