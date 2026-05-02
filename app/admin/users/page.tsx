@@ -205,15 +205,30 @@ export default function AdminUsersPage() {
           ? -amountNum
           : amountNum;
 
-      const { data: currentBalance } = await supabase
+      let { data: currentBalance } = await supabase
         .from("user_balances")
         .select("*")
         .eq("user_id", selectedUser.id)
-        .single();
+        .maybeSingle();
 
       if (!currentBalance) {
-        toast.error("User balance not found");
-        return;
+        const { data: newBalance, error: insertErr } = await supabase
+          .from("user_balances")
+          .insert({
+            user_id: selectedUser.id,
+            account_balance: 0,
+            profit_balance: 0,
+            loss_balance: 0,
+            funding_balance: 0,
+          })
+          .select()
+          .single();
+          
+        if (insertErr) {
+          toast.error("Failed to create user balance");
+          return;
+        }
+        currentBalance = newBalance;
       }
 
       let updateData: any = { updated_at: new Date().toISOString() };
