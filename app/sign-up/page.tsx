@@ -28,7 +28,8 @@ export default function SignUpPage() {
       options: {
         data: {
           full_name: fullName,
-        }
+        },
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       }
     });
 
