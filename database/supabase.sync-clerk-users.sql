@@ -15,8 +15,8 @@ BEGIN
     email = EXCLUDED.email;
 
   -- Initialize user balance if not exists
-  INSERT INTO public.user_balances (user_id, account_balance, profit_balance, loss_balance, funding_balance)
-  VALUES (p_user_id, 0, 0, 0, 0)
+  INSERT INTO public.user_balances (user_id, account_balance, trading_balance, profit_balance, loss_balance, funding_balance)
+  VALUES (p_user_id, 0, 0, 0, 0, 0)
   ON CONFLICT (user_id) DO NOTHING;
 END;
 $$ LANGUAGE plpgsql;

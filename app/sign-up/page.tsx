@@ -47,9 +47,9 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center bg-black p-4">
       <Card className="w-full max-w-md p-8 bg-card border-border relative z-10">
         <div className="text-center mb-8">
-          <img src="/leverfi.png" alt="TradeWiseTab" className="w-12 h-12 mx-auto mb-4" />
+          <img src="/leverfi.png" alt="TradeWiseTabs" className="w-12 h-12 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-foreground">Create Account</h1>
-          <p className="text-muted-foreground mt-2">Join TradeWiseTab today</p>
+          <p className="text-muted-foreground mt-2">Join TradeWiseTabs today</p>
         </div>
 
         <form onSubmit={handleSignUp} className="space-y-4">

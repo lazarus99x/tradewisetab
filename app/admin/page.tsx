@@ -13,10 +13,10 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("overview");
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Admin Dashboard</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">
           Manage users, verify accounts, and monitor platform activity
         </p>
       </div>
@@ -42,19 +42,19 @@ export default function AdminPage() {
           <TabsList className="grid w-full grid-cols-3 relative z-10 bg-card/50 backdrop-blur border border-border">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:bg-[#00FE01] data-[state=active]:text-black"
+              className="text-xs sm:text-sm data-[state=active]:bg-[#00FE01] data-[state=active]:text-black truncate"
             >
               Overview
             </TabsTrigger>
             <TabsTrigger
               value="users"
-              className="data-[state=active]:bg-[#00FE01] data-[state=active]:text-black"
+              className="text-xs sm:text-sm data-[state=active]:bg-[#00FE01] data-[state=active]:text-black truncate"
             >
-              User Management
+              User Mgmt
             </TabsTrigger>
             <TabsTrigger
               value="analytics"
-              className="data-[state=active]:bg-[#00FE01] data-[state=active]:text-black"
+              className="text-xs sm:text-sm data-[state=active]:bg-[#00FE01] data-[state=active]:text-black truncate"
             >
               Analytics
             </TabsTrigger>

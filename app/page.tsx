@@ -64,7 +64,7 @@ export default function Home() {
           >
             <motion.img
               src="/leverfi.png"
-              alt="TradeWiseTab Logo"
+              alt="TradeWiseTabs"
               width={40}
               height={40}
               className="rounded-xl"
@@ -79,7 +79,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            TradeWiseTab
+            TradeWiseTabs
             
           </motion.span>
         </motion.div>
@@ -177,7 +177,7 @@ export default function Home() {
                   Your Gateway to{" "}
                   <span className="relative inline-block">
                     <span className="relative z-10 text-[#00FE01]">
-                      Finacial
+                      Financial
                     </span>
                     <motion.span
                       className="absolute inset-0 bg-[#00FE01]/20 blur-2xl -z-10"
@@ -588,7 +588,7 @@ export default function Home() {
           <div className="max-w-4xl mx-auto space-y-8">
             <h2 className="text-4xl font-bold">Ready to Get Started?</h2>
             <p className="text-xl text-muted-foreground">
-              Join thousands of traders who have already discovered the TradeWiseTab
+              Join thousands of traders who have already discovered the TradeWiseTabs
               advantage.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -739,7 +739,7 @@ export default function Home() {
           </div>
         </div>
         <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>© 2025 TradeWiseTab. All rights reserved.</p>
+          <p>© 2025 TradeWiseTabs. All rights reserved.</p>
         </div>
       </footer>
     </div>

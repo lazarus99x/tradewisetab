@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, Users, Settings, LogOut, Shield, ArrowDownCircle, ArrowUpCircle, TrendingUp, Building2, DollarSign, FileCheck } from "lucide-react";
+import { BarChart3, Users, Settings, LogOut, Shield, ArrowDownCircle, ArrowUpCircle, TrendingUp, DollarSign, FileCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useClerk } from "@/lib/auth";
 
@@ -12,11 +12,6 @@ export function AdminSidebar() {
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/kyc", label: "KYC Management", icon: FileCheck },
     { href: "/admin/funding", label: "Funding", icon: BarChart3 },
-    {
-      href: "/admin/fund-management",
-      label: "Fund Management",
-      icon: Settings,
-    },
     { href: "/admin/deposits", label: "Deposits", icon: ArrowDownCircle },
     { href: "/admin/withdrawals", label: "Withdrawals", icon: ArrowUpCircle },
     { href: "/admin/trades", label: "Trades", icon: TrendingUp },
@@ -42,7 +37,7 @@ export function AdminSidebar() {
           >
             <motion.img
               src="/leverfi.png"
-              alt="TradeWiseTab Logo"
+              alt="TradeWiseTabs"
               className="w-full h-full object-contain"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -55,7 +50,7 @@ export function AdminSidebar() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/"> TradeWiseTab </Link>
+            <Link href="/"> TradeWiseTabs </Link>
           </motion.span>
         </motion.div>
       </div>

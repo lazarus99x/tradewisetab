@@ -127,6 +127,7 @@ export async function POST(request: Request) {
       .insert({
         user_id: userId,
         account_balance: 0,
+        trading_balance: 0,
         profit_balance: 0,
         funding_balance: 0,
       });

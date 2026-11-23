@@ -213,7 +213,7 @@ export default function AdminDepositsPage() {
       }
 
       // Deactivate old wallet for this currency if it exists
-      if (editingWallet) {
+      if (editingWallet && editingWallet !== "new") {
         // Updating existing wallet
         const updateData: any = {
           address: walletForm.address.trim(),

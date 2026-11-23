@@ -172,18 +172,12 @@ export function LiveOrderPanel({ asset }: LiveOrderPanelProps) {
       if (tradeError) throw tradeError;
 
       if (orderType === "buy") {
-        const newBalance = availableBalance - tradeValue;
-        await supabase
-          .from("user_balances")
-          .update({ account_balance: newBalance })
-          .eq("user_id", user.id);
-          
         await supabase.from("transactions").insert({
           user_id: user.id,
           type: "trade",
           amount: -tradeValue,
           description: `Buy Order: ${tradeAmount} ${asset} at $${orderPrice}`,
-          status: "completed",
+          status: "pending",
         });
       } else {
         const { data: holdings } = await supabase

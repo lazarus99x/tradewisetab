@@ -130,8 +130,10 @@ export function SimpleSignalsBot() {
       await supabase.from("user_trades").insert({
         user_id: user.id,
         symbol: "BTC/USD",
-        side: pl >= 0 ? "BUY" : "SELL",
-        price: 0,
+        trade_type: pl >= 0 ? "BUY" : "SELL",
+        amount: 1,
+        price: amount,
+        total_value: amount,
         status: "ready",
         profit_loss: pl,
         description: `AI bot session completed. Risk: ${risk}. Invested: $${amount}. ROI: ${Math.abs(Math.round(roi * 100))}%. Approval required: ${!mustApprove ? "Admin must decide" : "Must approve"}`,
@@ -343,8 +345,13 @@ export function SimpleSignalsBot() {
         .from("market_data")
         .select("price")
         .eq("symbol", signal.symbol)
-        .single();
-      const foundPrice = priceData?.price || 0;
+        .maybeSingle();
+      const foundPrice = Number(priceData?.price) || 0;
+      if (!foundPrice) {
+        console.warn("No price found for symbol:", signal.symbol);
+        setLoading(false);
+        return;
+      }
       const amount = 1;
       const total_value = Number(foundPrice) * amount;
       // Create trade request
@@ -377,7 +384,7 @@ export function SimpleSignalsBot() {
 
       toast.success("Trade order created and sent to admin for approval.");
     } catch (error) {
-      toast.error("Failed to create trade. Try again.");
+      console.error("submitTrade error:", error);
     }
     setLoading(false);
   }

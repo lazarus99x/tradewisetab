@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button"
 
 export function AdminTopNav() {
   return (
-    <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
-      <div>
-        <h2 className="text-xl font-semibold text-foreground">Administration</h2>
-        <p className="text-sm text-muted-foreground">Platform management and monitoring</p>
+    <div className="border-b border-border bg-card px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex items-center justify-between">
+      <div className="min-w-0 flex-1">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground truncate">Administration</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground truncate">Platform management and monitoring</p>
       </div>
 
       <div className="flex items-center gap-4">

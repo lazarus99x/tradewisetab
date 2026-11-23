@@ -34,11 +34,16 @@ export default function AdminUsersPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Reset password dialog state
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+
   // Transaction form state
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [transactionType, setTransactionType] = useState<
-    "deposit" | "withdrawal" | "profit" | "loss"
+    "deposit" | "withdrawal" | "profit" | "loss" | "trade_add" | "trade_subtract"
   >("deposit");
 
   // Active tab
@@ -140,11 +145,10 @@ export default function AdminUsersPage() {
     }
 
     if (action === "reset_password") {
-      if (
-        !confirm("This will send a password reset email to the user. Continue?")
-      ) {
-        return;
-      }
+      setShowResetDialog(true);
+      setResetNewPassword("");
+      setResetConfirmPassword("");
+      return;
     }
 
     setActionLoading(action);
@@ -169,6 +173,39 @@ export default function AdminUsersPage() {
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to perform action");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!selectedUser) return;
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setActionLoading("reset_password");
+    try {
+      const response = await fetch("/api/admin/users/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset_password", userId: selectedUser.id, newPassword: resetNewPassword }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to reset password");
+
+      toast.success(data.message || "Password reset successfully");
+      setShowResetDialog(false);
+      setResetNewPassword("");
+      setResetConfirmPassword("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reset password");
     } finally {
       setActionLoading(null);
     }
@@ -200,10 +237,8 @@ export default function AdminUsersPage() {
         await createProfileIfNeeded();
       }
 
-      const deltaAmount =
-        transactionType === "withdrawal" || transactionType === "loss"
-          ? -amountNum
-          : amountNum;
+      const isSubtract = transactionType === "withdrawal" || transactionType === "loss" || transactionType === "trade_subtract";
+      const deltaAmount = isSubtract ? -amountNum : amountNum;
 
       let { data: currentBalance } = await supabase
         .from("user_balances")
@@ -217,6 +252,7 @@ export default function AdminUsersPage() {
           .insert({
             user_id: selectedUser.id,
             account_balance: 0,
+            trading_balance: 0,
             profit_balance: 0,
             funding_balance: 0,
           })
@@ -232,29 +268,25 @@ export default function AdminUsersPage() {
 
       let updateData: any = { updated_at: new Date().toISOString() };
 
-      if (transactionType === "profit") {
-        updateData.profit_balance =
-          (currentBalance.profit_balance || 0) + deltaAmount;
-      } else if (transactionType === "deposit") {
-        updateData.account_balance =
-          (currentBalance.account_balance || 0) + deltaAmount;
-      } else if (
-        transactionType === "withdrawal" ||
-        transactionType === "loss"
-      ) {
-        updateData.account_balance =
-          (currentBalance.account_balance || 0) + deltaAmount;
+      // Independent operations - no cross-connections between fields
+      if (transactionType === "deposit") {
+        updateData.account_balance = (currentBalance.account_balance || 0) + deltaAmount;
+      } else if (transactionType === "withdrawal") {
+        updateData.account_balance = (currentBalance.account_balance || 0) + deltaAmount;
+      } else if (transactionType === "profit") {
+        updateData.profit_balance = (currentBalance.profit_balance || 0) + deltaAmount;
+      } else if (transactionType === "loss") {
+        updateData.account_balance = (currentBalance.account_balance || 0) + deltaAmount;
+      } else if (transactionType === "trade_add") {
+        updateData.trading_balance = (currentBalance.trading_balance || 0) + deltaAmount;
+      } else if (transactionType === "trade_subtract") {
+        updateData.trading_balance = (currentBalance.trading_balance || 0) + deltaAmount;
       }
 
-      const accountBal =
-        updateData.account_balance !== undefined
-          ? updateData.account_balance
-          : currentBalance.account_balance || 0;
-      const profitBal =
-        updateData.profit_balance !== undefined
-          ? updateData.profit_balance
-          : currentBalance.profit_balance || 0;
-      updateData.balance = accountBal + profitBal;
+      updateData.balance =
+        (updateData.account_balance ?? currentBalance.account_balance ?? 0) +
+        (updateData.trading_balance ?? currentBalance.trading_balance ?? 0) +
+        (updateData.profit_balance ?? currentBalance.profit_balance ?? 0);
 
       const { error: balanceError } = await supabase
         .from("user_balances")
@@ -263,22 +295,30 @@ export default function AdminUsersPage() {
 
       if (balanceError) throw balanceError;
 
+      // Log transaction - use valid types from DB check constraint
+      const txType = transactionType === "trade_add" ? "deposit" : 
+                     transactionType === "trade_subtract" ? "withdrawal" : transactionType;
       const { error: transactionError } = await supabase
         .from("transactions")
         .insert({
           user_id: selectedUser.id,
-          type: transactionType,
+          type: txType,
           amount: amountNum,
-          description: description || transactionType.charAt(0).toUpperCase() + transactionType.slice(1),
+          description: description || `${transactionType === "trade_add" ? "Add Trade Balance" : transactionType === "trade_subtract" ? "Subtract Trade Balance" : transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}`,
         });
 
       if (transactionError) throw transactionError;
 
       setAmount("");
       setDescription("");
-      toast.success(
-        `Successfully ${transactionType === "deposit" ? "deposited" : transactionType === "withdrawal" ? "withdrawn" : transactionType === "profit" ? "added profit" : "added loss"} $${amountNum.toFixed(2)}`
-      );
+      const actionLabel = 
+        transactionType === "deposit" ? "deposited" :
+        transactionType === "withdrawal" ? "withdrawn" :
+        transactionType === "profit" ? "added profit" :
+        transactionType === "loss" ? "added loss" :
+        transactionType === "trade_add" ? "added to trade balance" :
+        "subtracted from trade balance";
+      toast.success(`Successfully ${actionLabel} $${amountNum.toFixed(2)}`);
 
       await loadUserProfile(selectedUser.id);
     } catch (error: any) {
@@ -332,27 +372,27 @@ export default function AdminUsersPage() {
   const isSuspended = selectedUser?.publicMetadata?.suspended === true;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">User Management</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
           Manage users, balances, and transactions
         </p>
       </div>
 
       <Tabs id="admin-users-tabs" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users">Users & Actions</TabsTrigger>
-          <TabsTrigger value="balances">Balance Management</TabsTrigger>
+          <TabsTrigger value="users" className="text-xs sm:text-sm">Users & Actions</TabsTrigger>
+          <TabsTrigger value="balances" className="text-xs sm:text-sm">Balance Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* User Search */}
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Search className="w-5 h-5" />
-                <h2 className="text-xl font-semibold">Find User</h2>
+                <Search className="w-5 h-5 shrink-0" />
+                <h2 className="text-lg sm:text-xl font-semibold">Find User</h2>
               </div>
 
               <div className="space-y-4">
@@ -362,16 +402,16 @@ export default function AdminUsersPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
 
-                <div className="max-h-96 overflow-y-auto space-y-2">
+                <div className="max-h-64 sm:max-h-96 overflow-y-auto space-y-2">
                   {loading ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
                       Loading users...
                     </div>
                   ) : filteredUsers.length > 0 ? (
                     filteredUsers.map((user) => (
                       <div
                         key={user.id}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        className={`p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors ${
                           selectedUser?.id === user.id
                             ? "border-[#00FE01] bg-[#00FE01]/5"
                             : "hover:bg-muted"
@@ -379,28 +419,28 @@ export default function AdminUsersPage() {
                         onClick={() => setSelectedUser(user)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">
                               {user.firstName && user.lastName
                                 ? `${user.firstName} ${user.lastName}`
                                 : user.firstName || user.lastName || "No name"}
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
                               {user.emailAddresses[0]?.emailAddress ||
                                 "No email"}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
                               ID: {user.id.slice(0, 12)}...
                             </p>
                           </div>
                           {user.publicMetadata?.suspended && (
-                            <Ban className="w-4 h-4 text-red-500" />
+                            <Ban className="w-4 h-4 text-red-500 shrink-0 ml-2" />
                           )}
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
                       No users found
                     </div>
                   )}
@@ -409,27 +449,27 @@ export default function AdminUsersPage() {
             </Card>
 
             {/* User Details & Actions */}
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Users className="w-5 h-5" />
-                <h2 className="text-xl font-semibold">User Details</h2>
+                <Users className="w-5 h-5 shrink-0" />
+                <h2 className="text-lg sm:text-xl font-semibold">User Details</h2>
               </div>
 
               {selectedUser ? (
                 <div className="space-y-4">
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="font-medium">
+                    <p className="font-medium text-sm sm:text-base">
                       {selectedUser.firstName && selectedUser.lastName
                         ? `${selectedUser.firstName} ${selectedUser.lastName}`
                         : selectedUser.firstName ||
                           selectedUser.lastName ||
                           "No name"}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       {selectedUser.emailAddresses[0]?.emailAddress ||
                         "No email"}
                     </p>
-                    <p className="text-xs text-blue-500 mt-1">
+                    <p className="text-xs text-blue-500 mt-1 truncate">
                       Clerk ID: {selectedUser.id}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -480,6 +520,14 @@ export default function AdminUsersPage() {
                             </div>
                             <div>
                               <span className="text-muted-foreground">
+                                Trading:
+                              </span>
+                              <p className="font-semibold text-blue-500">
+                                {formatCurrency(userBalance.trading_balance)}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">
                                 Profit:
                               </span>
                               <p className="font-semibold text-green-500">
@@ -492,9 +540,9 @@ export default function AdminUsersPage() {
                               </span>
                               <p className="font-semibold text-lg">
                                 {formatCurrency(
-                                  userBalance.balance ||
-                                    (userBalance.account_balance || 0) +
-                                      (userBalance.profit_balance || 0)
+                                  (userBalance.account_balance || 0) +
+                                    (userBalance.trading_balance || 0) +
+                                    (userBalance.profit_balance || 0)
                                 )}
                               </p>
                             </div>
@@ -632,13 +680,13 @@ export default function AdminUsersPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="balances" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TabsContent value="balances" className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* User Selector */}
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Search className="w-5 h-5" />
-                <h2 className="text-xl font-semibold">Select User</h2>
+                <Search className="w-5 h-5 shrink-0" />
+                <h2 className="text-lg sm:text-xl font-semibold">Select User</h2>
               </div>
               <div className="space-y-4">
                 <Input
@@ -646,23 +694,23 @@ export default function AdminUsersPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2">
                   {filteredUsers.map((user) => (
                     <div
                       key={user.id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      className={`p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors ${
                         selectedUser?.id === user.id
                           ? "border-[#00FE01] bg-[#00FE01]/5"
                           : "hover:bg-muted"
                       }`}
                       onClick={() => setSelectedUser(user)}
                     >
-                      <p className="font-medium">
+                      <p className="font-medium text-sm sm:text-base truncate">
                         {user.firstName && user.lastName
                           ? `${user.firstName} ${user.lastName}`
                           : user.firstName || user.lastName || "No name"}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
                         {user.emailAddresses[0]?.emailAddress || "No email"}
                       </p>
                     </div>
@@ -672,10 +720,10 @@ export default function AdminUsersPage() {
             </Card>
 
             {/* Transaction Form */}
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="w-5 h-5" />
-                <h2 className="text-xl font-semibold">Apply Transaction</h2>
+                <DollarSign className="w-5 h-5 shrink-0" />
+                <h2 className="text-lg sm:text-xl font-semibold">Apply Transaction</h2>
               </div>
 
               {selectedUser ? (
@@ -693,14 +741,19 @@ export default function AdminUsersPage() {
                         "No email"}
                     </p>
                     {userBalance && (
-                      <div className="mt-2 pt-2 border-t">
+                      <div className="mt-2 pt-2 border-t space-y-1">
                         <p className="text-xs text-muted-foreground">
-                          Current Balance:{" "}
-                          <span className="font-semibold">
+                          Account: <span className="font-semibold">{formatCurrency(userBalance.account_balance)}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Trading: <span className="font-semibold text-blue-500">{formatCurrency(userBalance.trading_balance)}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Total: <span className="font-semibold">
                             {formatCurrency(
-                              userBalance.balance ||
-                                (userBalance.account_balance || 0) +
-                                  (userBalance.profit_balance || 0)
+                              (userBalance.account_balance || 0) +
+                                (userBalance.trading_balance || 0) +
+                                (userBalance.profit_balance || 0)
                             )}
                           </span>
                         </p>
@@ -723,6 +776,8 @@ export default function AdminUsersPage() {
                       <option value="withdrawal">Withdrawal</option>
                       <option value="profit">Add Profit</option>
                       <option value="loss">Add Loss</option>
+                      <option value="trade_add">Add Trade Balance</option>
+                      <option value="trade_subtract">Subtract Trade Balance</option>
                     </select>
                   </div>
 
@@ -757,7 +812,8 @@ export default function AdminUsersPage() {
                     loading={actionLoading === "transaction"}
                     className={`w-full ${
                       transactionType === "deposit" ||
-                      transactionType === "profit"
+                      transactionType === "profit" ||
+                      transactionType === "trade_add"
                         ? "bg-green-500 hover:bg-green-600"
                         : "bg-red-500 hover:bg-red-600"
                     }`}
@@ -774,13 +830,23 @@ export default function AdminUsersPage() {
                     {transactionType === "loss" && (
                       <TrendingDown className="w-4 h-4 mr-2" />
                     )}
+                    {transactionType === "trade_add" && (
+                      <TrendingUp className="w-4 h-4 mr-2 text-blue-400" />
+                    )}
+                    {transactionType === "trade_subtract" && (
+                      <TrendingDown className="w-4 h-4 mr-2 text-blue-400" />
+                    )}
                     {transactionType === "deposit"
                       ? "Deposit Funds"
                       : transactionType === "withdrawal"
                         ? "Withdraw Funds"
                         : transactionType === "profit"
                           ? "Add Profit"
-                          : "Add Loss"}
+                          : transactionType === "trade_add"
+                            ? "Add Trade Balance"
+                            : transactionType === "trade_subtract"
+                              ? "Subtract Trade Balance"
+                              : "Add Loss"}
                   </LoadingButton>
                 </div>
               ) : (
@@ -793,6 +859,54 @@ export default function AdminUsersPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Reset Password Dialog */}
+      {showResetDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-1">Reset Password</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Set a new password for {selectedUser?.firstName || selectedUser?.emailAddresses?.[0]?.emailAddress || "this user"}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">New Password</label>
+                <Input
+                  type="password"
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Confirm Password</label>
+                <Input
+                  type="password"
+                  value={resetConfirmPassword}
+                  onChange={(e) => setResetConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-6 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowResetDialog(false)}
+                disabled={actionLoading === "reset_password"}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleResetPassword}
+                disabled={actionLoading === "reset_password"}
+                className="bg-[#00FE01] hover:bg-[#B4FE01] text-black"
+              >
+                {actionLoading === "reset_password" ? "Resetting..." : "Reset Password"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

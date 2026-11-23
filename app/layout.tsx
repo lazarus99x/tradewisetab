@@ -2,14 +2,18 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ToastProvider } from "@/components/ui/toast-provider";
+import { SmartsuppChat } from "@/components/smartsupp-chat";
 import "./globals.css";
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "TradeWiseTab",
-  description: "TradeWiseTab funding and automated trading platform",
+  title: "TradeWiseTabs",
+  description: "TradeWiseTabs funding and automated trading platform",
+  icons: [
+    { rel: "icon", url: "/favicon.svg", type: "image/svg+xml" },
+  ],
 };
 
 export default function RootLayout({
@@ -21,6 +25,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         {children}
+        <SmartsuppChat />
         <ToastProvider />
         <Analytics />
       </body>

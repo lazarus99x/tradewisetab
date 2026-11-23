@@ -305,107 +305,107 @@ export default function DashboardPage() {
     <div className="flex h-screen bg-background">
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
-          <div className="p-4 space-y-6">
+          <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6">
             <UserAnnouncements />
 
             {/* Balance Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Account Balance
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
+              <Card className="p-2 sm:p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
+                      Account
                     </p>
-                    <p className="text-2xl font-bold text-foreground mt-1">
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-foreground leading-tight break-all">
                       {loading ? (
-                        <span className="inline-block w-24 h-7 bg-muted animate-pulse rounded" />
+                        <span className="inline-block w-12 h-4 bg-muted animate-pulse rounded" />
                       ) : (
                         formatCurrency(balances.account_balance)
                       )}
                     </p>
                   </div>
-                  <DollarSign className="w-8 h-8 text-blue-500" />
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 mt-0.5 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Profit Balance
+              <Card className="p-2 sm:p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
+                      Profit
                     </p>
-                    <p className="text-2xl font-bold text-green-500 mt-1">
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-green-500 leading-tight break-all">
                       {loading ? (
-                        <span className="inline-block w-24 h-7 bg-muted animate-pulse rounded" />
+                        <span className="inline-block w-12 h-4 bg-muted animate-pulse rounded" />
                       ) : (
                         formatCurrency(balances.profit_balance)
                       )}
                     </p>
                   </div>
-                  <TrendingUp className="w-8 h-8 text-green-500" />
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 mt-0.5 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Trading Balance
+              <Card className="p-2 sm:p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
+                      Trading
                     </p>
-                    <p className="text-2xl font-bold text-purple-500 mt-1">
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-purple-500 leading-tight break-all">
                       {loading ? (
-                        <span className="inline-block w-24 h-7 bg-muted animate-pulse rounded" />
+                        <span className="inline-block w-12 h-4 bg-muted animate-pulse rounded" />
                       ) : (
                         formatCurrency(balances.trading_balance)
                       )}
                     </p>
                   </div>
-                  <CreditCard className="w-8 h-8 text-purple-500" />
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 mt-0.5 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Funding Balance
+              <Card className="p-2 sm:p-4 bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/20">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
+                      Funding
                     </p>
-                    <p className="text-2xl font-bold text-cyan-500 mt-1">
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-cyan-500 leading-tight break-all">
                       {loading ? (
-                        <span className="inline-block w-24 h-7 bg-muted animate-pulse rounded" />
+                        <span className="inline-block w-12 h-4 bg-muted animate-pulse rounded" />
                       ) : (
                         formatCurrency(balances.funding_balance)
                       )}
                     </p>
                   </div>
-                  <CreditCard className="w-8 h-8 text-cyan-500" />
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500 mt-0.5 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-gradient-to-br from-[#00FE01]/10 to-[#00FE01]/20 border-[#00FE01]/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Total Balance
+              <Card className="p-2 sm:p-4 bg-gradient-to-br from-[#00FE01]/10 to-[#00FE01]/20 border-[#00FE01]/30">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
+                      Total
                     </p>
-                    <p className="text-2xl font-bold text-[#00FE01] mt-1">
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-[#00FE01] leading-tight break-all">
                       {loading ? (
-                        <span className="inline-block w-24 h-7 bg-muted animate-pulse rounded" />
+                        <span className="inline-block w-12 h-4 bg-muted animate-pulse rounded" />
                       ) : (
                         formatCurrency(balances.total_balance)
                       )}
                     </p>
                   </div>
-                  <DollarSign className="w-8 h-8 text-[#00FE01]" />
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-[#00FE01] mt-0.5 flex-shrink-0" />
                 </div>
               </Card>
             </div>
 
             {/* CTA: GET FUNDED */}
             <div className="mb-2">
-              <Link href="/dashboard/funding" className="block w-full max-w-xs">
+              <Link href="/dashboard/funding" className="block w-full sm:max-w-xs">
                 <span
-                  className="inline-flex items-center justify-center w-full px-6 py-3 rounded-xl text-sm font-extrabold tracking-wide text-black shadow-lg
+                  className="inline-flex items-center justify-center w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-extrabold tracking-wide text-black shadow-lg
                   bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-400
                   animate-[shimmer_2.2s_infinite]
                   [background-size:200%_100%]
@@ -465,13 +465,13 @@ export default function DashboardPage() {
             </Card>
 
             {/* Transaction History - Full Width and Prominent */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <History className="w-6 h-6 text-[#00FE01]" />
-                  <h2 className="text-2xl font-bold">Transaction History</h2>
+            <Card className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <History className="w-5 h-5 sm:w-6 sm:h-6 text-[#00FE01] flex-shrink-0" />
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">Transaction History</h2>
                 </div>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0 ml-2">
                   {transactions.length} transactions
                 </span>
               </div>
@@ -487,27 +487,27 @@ export default function DashboardPage() {
                     {transactions.map((tx) => (
                       <div
                         key={tx.id}
-                        className="flex items-center justify-between p-4 border-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between p-3 sm:p-4 border-2 rounded-lg hover:bg-muted/50 transition-colors gap-2"
                       >
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="p-2 rounded-lg bg-muted">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                          <div className="p-1.5 sm:p-2 rounded-lg bg-muted flex-shrink-0">
                             {getTransactionIcon(tx.type)}
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-base">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm sm:text-base truncate">
                               {getTransactionTypeLabel(tx.type)}
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
                               {tx.description || "No description available"}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {new Date(tx.created_at).toLocaleString()}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                           <p
-                            className={`text-xl font-bold ${
+                            className={`text-base sm:text-lg md:text-xl font-bold whitespace-nowrap ${
                               tx.type === "deposit" ||
                               tx.type === "loan_disbursal" ||
                               tx.type === "profit" ||

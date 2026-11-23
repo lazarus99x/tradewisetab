@@ -150,18 +150,12 @@ export function SimpleOrderPanel({ asset }: SimpleOrderPanelProps) {
       if (tradeError) throw tradeError;
 
       if (type === "BUY") {
-        const newBalance = balance - totalCost;
-        await supabase
-          .from("user_balances")
-          .update({ account_balance: newBalance })
-          .eq("user_id", user.id);
-          
         await supabase.from("transactions").insert({
           user_id: user.id,
           type: "trade",
           amount: -totalCost, // Deducting cost
           description: `Buy Order: ${cryptoAmount.toFixed(4)} ${asset} at $${price}`,
-          status: "completed",
+          status: "pending",
         });
       } else {
         const { data: holding } = await supabase

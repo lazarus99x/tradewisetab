@@ -120,22 +120,13 @@ export function InvestmentRequestForm() {
 
       if (reqError) throw reqError;
 
-      // Deduct balance
-      const newBalance = availableBalance - amount;
-      const { error: balanceError } = await supabase
-        .from("user_balances")
-        .update({ account_balance: newBalance })
-        .eq("user_id", user.id);
-        
-      if (balanceError) console.error("Balance update error:", balanceError);
-
       // Log transaction
       const { error: txError } = await supabase.from("transactions").insert({
         user_id: user.id,
         type: "investment",
         amount: -amount, // Negative for debit
         description: `Investment Request: ${targetShares.toFixed(4)} shares of ${selectedStock}`,
-        status: "completed",
+        status: "pending",
       });
       
       if (txError) console.error("Transaction log error:", txError);

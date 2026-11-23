@@ -23,7 +23,7 @@ export function SignalsList() {
         () => loadSignals()
       )
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   async function loadSignals() {

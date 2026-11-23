@@ -3,9 +3,9 @@
 
 UPDATE public.profiles
 SET role = 'admin'
-WHERE email = 'contact@tradewisetab.pro';
+WHERE email = 'contact@oakbrookadvisors.pro';
 
 -- Optional: Verify the change
 SELECT email, role, full_name
 FROM public.profiles
-WHERE email = 'contact@tradewisetab.pro';
+WHERE email = 'contact@oakbrookadvisors.pro';

@@ -6,6 +6,9 @@ const publicRoutes = [
   "/sign-in",
   "/sign-up",
   "/videos",
+  "/reset-password",
+  "/update-password",
+  "/auth/callback",
   // Admin sign-in is public so unauthenticated admins can log in
   "/admin/sign-in",
 ];

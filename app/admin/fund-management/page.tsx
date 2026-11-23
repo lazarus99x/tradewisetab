@@ -213,7 +213,6 @@ export default function AdminFundManagementPage() {
           user_id: selectedUser.id,
           currentBalance: currentBalance.balance,
           deltaAmount,
-          newBalance,
         });
         toast.error(`Error updating user balance: ${balanceError.message}`);
         return;
