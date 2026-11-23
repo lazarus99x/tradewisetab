@@ -308,6 +308,25 @@ export default function DashboardPage() {
           <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6">
             <UserAnnouncements />
 
+            {/* Personalized Greeting */}
+            <div className="p-3 sm:p-4 bg-gradient-to-r from-[#00FE01]/10 to-blue-500/10 border border-[#00FE01]/20 rounded-xl">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="text-2xl sm:text-3xl">👋</div>
+                <div>
+                  <h2 className="text-base sm:text-lg md:text-xl font-bold text-foreground">
+                    {user?.fullName
+                      ? `Welcome back, ${user.fullName.split(' ')[0] || user.fullName}!`
+                      : "Welcome to TradeWiseTabs"}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                    {user?.fullName
+                      ? `Good to see you, ${user.fullName.split(' ')[0]}. Your trading journey continues here.`
+                      : "Your trading journey starts here."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Balance Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
               <Card className="p-2 sm:p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">

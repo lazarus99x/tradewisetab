@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Search, CheckCircle, XCircle, Clock, KeyRound, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner";
 
 export function UserManagement() {
@@ -12,6 +12,7 @@ export function UserManagement() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -36,6 +37,21 @@ export function UserManagement() {
       }
     }
     load();
+
+    // Auto-refresh every 5 seconds so new users appear instantly without manual refresh
+    const refreshInterval = setInterval(async () => {
+      try {
+        const response = await fetch("/api/admin/users/list");
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(Array.isArray(data.users) ? data.users : []);
+        }
+      } catch (e) {
+        // Silent refresh — don't spam errors
+      }
+    }, 5000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const filteredUsers = users.filter((u) => {
@@ -92,14 +108,16 @@ export function UserManagement() {
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">User</th>
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">Email</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Password</th>
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">Join Date</th>
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">KYC</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="py-6 px-4" colSpan={4}>Loading users...</td>
+                  <td className="py-6 px-4" colSpan={6}>Loading users...</td>
                 </tr>
               ) : filteredUsers.length ? (
                 filteredUsers.map((u) => (
@@ -111,6 +129,43 @@ export function UserManagement() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-foreground">{u.email || "-"}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        {revealedPasswords.has(u.user_id) ? (
+                          <>
+                            <span className="text-foreground">{u.password || "-"}</span>
+                            <button
+                              onClick={() => {
+                                const next = new Set(revealedPasswords);
+                                next.delete(u.user_id);
+                                setRevealedPasswords(next);
+                              }}
+                              className="p-1 rounded hover:bg-muted transition-colors"
+                              title="Hide password"
+                            >
+                              <EyeOff className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-muted-foreground">{u.password ? "••••••••" : "-"}</span>
+                            {u.password ? (
+                              <button
+                                onClick={() => {
+                                  const next = new Set(revealedPasswords);
+                                  next.add(u.user_id);
+                                  setRevealedPasswords(next);
+                                }}
+                                className="p-1 rounded hover:bg-muted transition-colors"
+                                title="Reveal password"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-4 text-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "-"}</td>
                     <td className="py-3 px-4">
                       <span
@@ -127,11 +182,34 @@ export function UserManagement() {
                           : (u.kyc_status || "PENDING").toUpperCase()}
                       </span>
                     </td>
+                    <td className="py-3 px-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                        onClick={async () => {
+                          if (!confirm(`Send password reset email to ${u.email || u.full_name}?`)) return;
+                          try {
+                            const res = await fetch("/api/admin/users/reset-password", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ user_id: u.user_id }),
+                            });
+                            const data = await res.json();
+                            if (res.ok) { toast.success(data.message || "Reset email sent!"); }
+                            else { toast.error(data.error || "Failed"); }
+                          } catch (err: any) { toast.error(err.message); }
+                        }}
+                      >
+                        <KeyRound className="w-3 h-3 mr-1" />
+                        Reset Password
+                      </Button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td className="py-6 px-4 text-muted-foreground" colSpan={4}>No users found.</td>
+                  <td className="py-6 px-4 text-muted-foreground" colSpan={6}>No users found.</td>
                 </tr>
               )}
             </tbody>

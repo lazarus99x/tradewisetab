@@ -74,13 +74,12 @@ export default function Home() {
             />
           </motion.div>
           <motion.span
-            className="text-xl font-bold text-foreground"
+            className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
             TradeWiseTabs
-            
           </motion.span>
         </motion.div>
 
@@ -205,6 +204,17 @@ export default function Home() {
                 signals and advanced lending features. All in one powerful
                 platform.
               </motion.p>
+              <motion.div
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#00FE01]/5 border border-[#00FE01]/20 rounded-full mx-auto mt-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+              >
+                <div className="w-2 h-2 rounded-full bg-[#00FE01] animate-pulse" />
+                <span className="text-xs sm:text-sm font-bold text-[#00FE01]/80">
+                  TradeWiseTabs
+                </span>
+              </motion.div>
             </div>
 
             <motion.div
@@ -583,6 +593,149 @@ export default function Home() {
             </motion.div>
           </motion.div>
         </div>
+
+        {/* How It Works */}
+        <div className="py-24 px-6 relative overflow-hidden">
+          <BackgroundVideo
+            sources={[
+              { src: "/videos/lines.webm", type: "video/webm" },
+            ]}
+            overlayOpacity={0.87}
+            className="opacity-40"
+          />
+          <div className="max-w-5xl mx-auto relative z-10">
+            <motion.div
+              className="text-center mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                How <span className="text-[#00FE01]">TradeWiseTabs</span> Works
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Start your trading journey in three simple steps
+              </p>
+            </motion.div>
+            <div className="grid md:grid-cols-3 gap-8 mb-16">
+              {[
+                {
+                  step: "01",
+                  title: "Create Account",
+                  desc: "Sign up free in under 2 minutes. No hidden fees, no minimum deposit required.",
+                  image: "/images/phone.png",
+                },
+                {
+                  step: "02",
+                  title: "Fund Your Wallet",
+                  desc: "Deposit with any payment method. Get funded and start trading instantly.",
+                  image: "/images/phone2.png",
+                },
+                {
+                  step: "03",
+                  title: "Start Earning",
+                  desc: "Activate AI signals or trade manually. Withdraw profits anytime, anywhere.",
+                  image: "/images/phone3.png",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={item.step}
+                  className="group relative"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.15, duration: 0.5 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="p-6 rounded-2xl bg-card/80 backdrop-blur-sm border border-border hover:border-[#00FE01]/20 transition-all h-full">
+                    <div className="text-4xl font-bold text-[#00FE01]/20 mb-4">
+                      {item.step}
+                    </div>
+                    <div className="relative mb-4 rounded-xl overflow-hidden aspect-video bg-muted">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {item.desc}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Global Leaders */}
+        <div className="py-20 px-6 bg-card/30 overflow-hidden">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <motion.div
+                className="space-y-6"
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8 }}
+                viewport={{ once: true }}
+              >
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#00FE01]/10 rounded-full">
+                  <TrendingUp className="w-4 h-4 text-[#00FE01]" />
+                  <span className="text-xs font-medium text-[#00FE01]">Global Leader</span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+                  Trusted by Traders{" "}
+                  <span className="text-[#00FE01]">Worldwide</span>
+                </h2>
+                <p className="text-muted-foreground">
+                  Join a global community of successful traders who trust TradeWiseTabs for their automated trading and AI-powered signal needs.
+                </p>
+                <div className="grid grid-cols-2 gap-6">
+                  {[
+                    { value: "150+", label: "Countries" },
+                    { value: "500K+", label: "Users" },
+                    { value: "$4.5B+", label: "Traded Volume" },
+                    { value: "4.9/5", label: "Rating" },
+                  ].map((s) => (
+                    <motion.div
+                      key={s.label}
+                      className="p-4 rounded-xl bg-card border border-border/50"
+                      whileHover={{ scale: 1.03, borderColor: "rgba(0,254,1,0.2)" }}
+                    >
+                      <div className="text-2xl font-bold text-[#00FE01]">{s.value}</div>
+                      <div className="text-xs text-muted-foreground">{s.label}</div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+              <motion.div
+                className="relative"
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8 }}
+                viewport={{ once: true }}
+              >
+                <div className="absolute inset-0 bg-linear-to-t from-[#00FE01]/10 via-transparent to-transparent blur-2xl" />
+                <div className="relative grid grid-cols-2 gap-3">
+                  <img
+                    src="/images/phone4.png"
+                    alt="Trading Dashboard"
+                    className="rounded-2xl border border-border/50 w-full object-cover aspect-[3/4] translate-y-4"
+                  />
+                  <img
+                    src="/images/dots.jpg"
+                    alt="Analytics"
+                    className="rounded-2xl border border-border/50 w-full object-cover aspect-[3/4]"
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
         {/* CTA Section */}
         <div className="py-20 px-6 text-center">
           <div className="max-w-4xl mx-auto space-y-8">

@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "sonner";
-import { Copy, Check, CheckCircle, XCircle, Eye, Bitcoin, Coins, DollarSign, Save, Edit2 } from "lucide-react";
+import { Copy, Check, CheckCircle, XCircle, Eye, Bitcoin, Coins, DollarSign, Save, Edit2, Trash2, Building2 } from "lucide-react";
 import Image from "next/image";
+import { AdminBankMethods } from "@/components/admin/admin-bank-methods";
 
 type Currency = "BTC" | "ETH" | "USDT";
 
 export default function AdminDepositsPage() {
-  const [activeTab, setActiveTab] = useState<"wallets" | "requests">("requests");
+  const [activeTab, setActiveTab] = useState<"wallets" | "requests" | "bank">("requests");
   const [wallets, setWallets] = useState<any[]>([]);
   const [depositRequests, setDepositRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -166,7 +167,7 @@ export default function AdminDepositsPage() {
   }
 
   async function uploadIcon(file: File): Promise<string> {
-    const fileName = `wallet-icons/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const fileName = "wallet-icons/" + (Date.now()) + "-" + (file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
     
     let uploadError = null;
     const { error } = await supabase.storage
@@ -185,7 +186,7 @@ export default function AdminDepositsPage() {
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
-      throw new Error(`Icon upload failed: ${uploadError.message || "Unknown error"}`);
+      throw new Error("Icon upload failed: " + (uploadError.message || "Unknown error"));
     }
 
     const { data } = supabase.storage.from("funding-images").getPublicUrl(fileName);
@@ -279,7 +280,7 @@ export default function AdminDepositsPage() {
         throw new Error(data.error || "Failed to activate wallet");
       }
       
-      toast.success(`${currency} wallet activated`);
+      toast.success((currency) + " wallet activated");
       loadWallets();
     } catch (error: any) {
       console.error("Error activating wallet:", error);
@@ -359,7 +360,7 @@ export default function AdminDepositsPage() {
           user_id: request.user_id,
           type: "deposit",
           amount: parseFloat(request.amount.toString()),
-          description: `Deposit: ${request.amount} ${request.currency} from ${request.source || "Unknown"}`,
+          description: "Deposit: " + (request.amount) + " " + (request.currency) + " from " + (request.source || "Unknown"),
         });
 
         toast.success("Deposit approved and balance updated");
@@ -387,7 +388,28 @@ export default function AdminDepositsPage() {
     }
   }
 
-  function copyAddress(address: string, id: string) {
+  async function deleteWallet(walletId: string, currency: string) {
+      if (!confirm("Delete " + (currency) + " wallet address? This cannot be undone.")) return;
+    
+      setLoading(true);
+      try {
+        const { error } = await supabase
+          .from("wallet_addresses")
+          .delete()
+          .eq("id", walletId);
+
+        if (error) throw error;
+        toast.success((currency) + " wallet deleted");
+        loadWallets();
+      } catch (error: any) {
+        console.error("Error deleting wallet:", error);
+        toast.error(error.message || "Failed to delete wallet");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function copyAddress(address: string, id: string) {
     navigator.clipboard.writeText(address);
     setCopied(id);
     toast.success("Address copied!");
@@ -413,23 +435,22 @@ export default function AdminDepositsPage() {
       <div className="flex gap-2 mb-4 sm:mb-6 border-b overflow-x-auto">
         <button
           onClick={() => setActiveTab("wallets")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "wallets"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={"px-4 py-2 font-medium transition-colors " + (activeTab === "wallets" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground")}
         >
           Wallet Addresses
         </button>
         <button
           onClick={() => setActiveTab("requests")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "requests"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={"px-4 py-2 font-medium transition-colors " + (activeTab === "requests" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground")}
         >
           Deposit Requests ({depositRequests.filter(r => r.status === "pending").length})
+        </button>
+        <button
+          onClick={() => setActiveTab("bank")}
+          className={"px-4 py-2 font-medium transition-colors " + (activeTab === "bank" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground")}
+        >
+          <Building2 className="w-4 h-4 inline mr-1" />
+          Bank Methods
         </button>
       </div>
 
@@ -528,9 +549,7 @@ export default function AdminDepositsPage() {
               return (
                 <div
                   key={wallet.id}
-                  className={`flex items-center justify-between p-4 border rounded-lg ${
-                    !isActive ? "opacity-50" : ""
-                  }`}
+                  className={"flex items-center justify-between p-4 border rounded-lg " + (!isActive ? "opacity-50" : "")}
                 >
                   <div className="flex items-center gap-2 sm:gap-3 flex-1">
                     {wallet.icon_url ? (
@@ -595,6 +614,15 @@ export default function AdminDepositsPage() {
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
+                    <Button
+                      onClick={() => deleteWallet(wallet.id, wallet.currency)}
+                      variant="outline"
+                      size="icon"
+                      disabled={loading}
+                      className="text-red-500 hover:text-red-600 border-red-500/50 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                     {!isActive && (
                       <Button
                         onClick={() => activateWallet(wallet.id, wallet.currency)}
@@ -633,13 +661,7 @@ export default function AdminDepositsPage() {
                         {request.amount} {request.currency}
                       </span>
                       <span
-                        className={`text-xs px-2 py-1 rounded ${
-                          request.status === "approved"
-                            ? "bg-green-500/20 text-green-500"
-                            : request.status === "rejected"
-                            ? "bg-red-500/20 text-red-500"
-                            : "bg-yellow-500/20 text-yellow-500"
-                        }`}
+                        className={"text-xs px-2 py-1 rounded " + (request.status === "approved" ? "bg-green-500/20 text-green-500" : request.status === "rejected" ? "bg-red-500/20 text-red-500" : "bg-yellow-500/20 text-yellow-500")}
                       >
                         {request.status.toUpperCase()}
                       </span>
@@ -707,6 +729,11 @@ export default function AdminDepositsPage() {
             ))
           )}
         </div>
+      )}
+
+      {/* Bank Methods Management */}
+      {activeTab === "bank" && (
+        <AdminBankMethods />
       )}
 
       {/* Proof Viewer Modal */}

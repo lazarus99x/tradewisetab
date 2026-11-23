@@ -6,8 +6,9 @@ import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Mail, Lock, Loader2, ShieldAlert } from "lucide-react";
+import { Mail, Lock, Loader2, ShieldAlert, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function AdminSignInPage() {
   const [email, setEmail] = useState("");
@@ -104,6 +105,12 @@ export default function AdminSignInPage() {
                 autoComplete="current-password"
               />
             </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Link href="/reset-password" className="text-sm text-[#00FE01] hover:underline">
+              Forgot Password?
+            </Link>
           </div>
 
           <Button

@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { toast } from "sonner";
-import { Copy, Check, Upload, Bitcoin, Coins, DollarSign } from "lucide-react";
+import { Copy, Check, Upload, Bitcoin, Coins, DollarSign, Building2 } from "lucide-react";
 
-type Currency = "BTC" | "ETH" | "USDT";
+type DepositMethod = "crypto" | "bank";
 
 export default function DepositPage() {
   const { user } = useUser();
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>("BTC");
+  const [selectedMethod, setSelectedMethod] = useState<DepositMethod>("crypto");
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("BTC");
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [source, setSource] = useState<string>("");
@@ -24,11 +25,13 @@ export default function DepositPage() {
   const [loading, setLoading] = useState(false);
   const [fetchingAddress, setFetchingAddress] = useState(true);
   const [allWallets, setAllWallets] = useState<Record<string, any>>({});
+  const [bankMethods, setBankMethods] = useState<any[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState<string>("");
+  const [fetchingBanks, setFetchingBanks] = useState(true);
 
-  // Fetch all wallet addresses once and cache them
+  // Fetch crypto wallets
   useEffect(() => {
     if (!user) return;
-
     async function loadAllWallets() {
       setFetchingAddress(true);
       try {
@@ -36,49 +39,35 @@ export default function DepositPage() {
           .from("wallet_addresses")
           .select("currency, address, network")
           .eq("active", true);
-
         if (error) {
           console.error("Error fetching wallet addresses:", error?.message || error?.code || JSON.stringify(error));
-          // Non-fatal: show placeholder addresses so page still loads
           setWalletAddress("Contact support for deposit address");
         } else {
-          // Cache wallets by currency
           const walletMap: Record<string, any> = {};
-          (data || []).forEach((wallet) => {
-            walletMap[wallet.currency] = wallet;
-          });
+          (data || []).forEach((wallet) => { walletMap[wallet.currency] = wallet; });
           setAllWallets(walletMap);
         }
       } catch (error: any) {
         console.error("Error fetching wallet addresses:", error?.message || error);
         setWalletAddress("Contact support for deposit address");
-      } finally {
-        setFetchingAddress(false);
-      }
+      } finally { setFetchingAddress(false); }
     }
-
     loadAllWallets();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("wallet_addresses_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "wallet_addresses",
-        },
-        () => loadAllWallets()
-      )
+    const channel = supabase.channel("wallet_addresses_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_addresses" }, () => loadAllWallets())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Update wallet address when currency changes (using cached data)
+  // Fetch bank methods
+  useEffect(() => {
+    setFetchingBanks(true);
+    supabase.from("bank_deposit_methods").select("*").eq("active", true).order("created_at", { ascending: false })
+      .then(({ data }) => { setBankMethods(data || []); setFetchingBanks(false); })
+      .catch(() => setFetchingBanks(false));
+  }, []);
+
+  // Update wallet address when currency changes
   useEffect(() => {
     if (Object.keys(allWallets).length > 0) {
       const currentWallet = allWallets[selectedCurrency];
@@ -97,305 +86,220 @@ export default function DepositPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
-    const validTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/webp",
-      "application/pdf",
-    ];
-    if (!validTypes.includes(file.type)) {
-      toast.error("Please upload an image (JPG, PNG, WEBP) or PDF file");
-      return;
-    }
-
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File size must be less than 10MB");
-      return;
-    }
-
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
+    if (!validTypes.includes(file.type)) { toast.error("Please upload an image (JPG, PNG, WEBP) or PDF file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("File size must be less than 10MB"); return; }
     setProofFile(file);
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProofPreview(reader.result as string);
-      };
+      reader.onloadend = () => { setProofPreview(reader.result as string); };
       reader.readAsDataURL(file);
-    } else {
-      setProofPreview("");
-    }
+    } else { setProofPreview(""); }
   }
 
   async function uploadProof(file: File): Promise<string> {
     if (!user?.id) throw new Error("User not authenticated");
-
-    const fileName = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("deposit-proofs")
-      .upload(fileName, file, { upsert: false });
-
+    const fileName = (user.id) + "/" + (Date.now()) + "-" + (file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
+    const { error: uploadError } = await supabase.storage.from("deposit-proofs").upload(fileName, file, { upsert: false });
     if (uploadError) {
-      // If file exists, remove and retry
       if (uploadError.message?.includes("already exists")) {
         await supabase.storage.from("deposit-proofs").remove([fileName]);
-        const { error: retryError } = await supabase.storage
-          .from("deposit-proofs")
-          .upload(fileName, file, { upsert: false });
-
-        if (retryError) throw new Error(`Upload failed: ${retryError.message}`);
-      } else {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
+        const { error: retryError } = await supabase.storage.from("deposit-proofs").upload(fileName, file, { upsert: false });
+        if (retryError) throw new Error("Upload failed: " + (retryError.message));
+      } else { throw new Error("Upload failed: " + (uploadError.message)); }
     }
-
-    const { data } = supabase.storage
-      .from("deposit-proofs")
-      .getPublicUrl(fileName);
+    const { data } = supabase.storage.from("deposit-proofs").getPublicUrl(fileName);
     return data.publicUrl;
   }
 
   async function submitDeposit() {
-    if (!user?.id) {
-      toast.error("Please sign in to deposit");
-      return;
-    }
-
-    if (!amount || parseFloat(amount) <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    if (!source.trim()) {
-      toast.error("Please enter the source (e.g., exchange or wallet name)");
-      return;
-    }
-
-    if (!proofFile) {
-      toast.error("Please upload proof of transaction");
-      return;
-    }
+    if (!user?.id) { toast.error("Please sign in to deposit"); return; }
+    if (!amount || parseFloat(amount) <= 0) { toast.error("Please enter a valid amount"); return; }
+    if (!source.trim()) { toast.error("Please enter the source (e.g., exchange or bank name)"); return; }
+    if (!proofFile) { toast.error("Please upload proof of transaction"); return; }
+    if (selectedMethod === "bank" && !selectedBankId) { toast.error("Please select a bank method"); return; }
 
     setLoading(true);
-
     try {
-      // Upload proof of transaction
       const proofUrl = await uploadProof(proofFile);
-
-      // Create deposit request
-      const { error } = await supabase.from("deposit_requests").insert({
+      const insertData: any = {
         user_id: user.id,
-        currency: selectedCurrency,
+        currency: selectedMethod === "bank" ? "USD" : selectedCurrency,
         amount: parseFloat(amount),
         source: source.trim(),
         proof_url: proofUrl,
         status: "pending",
-      });
+        method_type: selectedMethod,
+      };
+      if (selectedMethod === "bank") insertData.bank_method_id = selectedBankId;
 
-      if (error) {
-        console.error("Error creating deposit request:", error?.message || error?.code || JSON.stringify(error));
-        toast.error(`Failed to submit deposit: ${error?.message || error?.code || "Please try again"}`);
-        return;
-      }
-
+      const { error } = await supabase.from("deposit_requests").insert(insertData);
+      if (error) { console.error("Error creating deposit request:", error?.message || error?.code || JSON.stringify(error)); toast.error("Failed to submit deposit: " + (error?.message || error?.code || "Please try again")); return; }
       toast.success("Deposit request submitted! Admin will review it shortly.");
-
-      // Reset form
-      setAmount("");
-      setSource("");
-      setProofFile(null);
-      setProofPreview("");
-      const fileInput = document.getElementById(
-        "proof-file"
-      ) as HTMLInputElement;
+      setAmount(""); setSource(""); setProofFile(null); setProofPreview("");
+      const fileInput = document.getElementById("proof-file") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
     } catch (error: any) {
       console.error("Error submitting deposit:", error);
       toast.error(error.message || "Failed to submit deposit request");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   // Extract icons from cached wallet data
   const walletIcons: Record<string, string> = {};
   Object.values(allWallets).forEach((wallet: any) => {
-    if (wallet.icon_url) {
-      walletIcons[wallet.currency] = wallet.icon_url;
-    }
+    if (wallet.icon_url) walletIcons[wallet.currency] = wallet.icon_url;
   });
 
-  const currencies: { value: Currency; label: string; icon: any }[] = [
+  const cryptoCurrencies = [
     { value: "BTC", label: "Bitcoin", icon: Bitcoin },
     { value: "ETH", label: "Ethereum", icon: Coins },
     { value: "USDT", label: "USDT", icon: DollarSign },
   ];
 
+  const methodIcons: Record<string, any> = {
+    crypto: Bitcoin,
+    bank: Building2,
+  };
+
   return (
     <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-4xl">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">Deposit Funds</h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          Choose a deposit method and provide transaction details
-        </p>
+        <p className="text-sm sm:text-base text-muted-foreground">Choose a deposit method and provide transaction details</p>
+      </div>
+
+      {/* Method Selection */}
+      <div className="grid grid-cols-2 gap-3 mb-4 sm:mb-6">
+        {(["crypto", "bank"] as DepositMethod[]).map((method) => {
+          const Icon = methodIcons[method];
+          const isCrypto = selectedMethod === method;
+          return (
+            <button
+              key={method}
+              onClick={() => setSelectedMethod(method)}
+              className={"flex items-center justify-center gap-2 p-3 sm:p-4 rounded-lg border-2 transition-all " + (isCrypto ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}
+            >
+              <Icon className={"w-5 h-5 " + (isCrypto ? "text-primary" : "text-muted-foreground")} />
+              <span className={"font-medium " + (isCrypto ? "text-primary" : "text-muted-foreground")}>
+                {method === "crypto" ? "Crypto Wallet" : "Bank Transfer"}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-        {/* Currency Selection & Wallet Address */}
+        {/* Method Details Card */}
         <Card className="p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-            Select Deposit Method
+            {selectedMethod === "crypto" ? "Select Deposit Method" : "Select Bank Account"}
           </h2>
 
-          {/* Currency Tabs */}
-          <div className="grid grid-cols-3 gap-2 mb-4 sm:mb-6">
-            {currencies.map((currency) => {
-              const Icon = currency.icon;
-              const isSelected = selectedCurrency === currency.value;
-              const customIcon = walletIcons[currency.value];
-              return (
-                <button
-                  key={currency.value}
-                  onClick={() => setSelectedCurrency(currency.value)}
-                  className={`flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-4 rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  {customIcon ? (
-                    <img
-                      src={customIcon}
-                      alt={currency.label}
-                      className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
-                    />
-                  ) : (
-                    <Icon
-                      className={`w-5 h-5 sm:w-6 sm:h-6 ${isSelected ? "text-primary" : "text-muted-foreground"}`}
-                    />
-                  )}
-                  <span
-                    className={`text-xs sm:text-sm font-medium ${isSelected ? "text-primary" : "text-muted-foreground"}`}
-                  >
-                    {currency.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {selectedMethod === "crypto" ? (
+            <>
+              {/* Currency Tabs */}
+              <div className="grid grid-cols-3 gap-2 mb-4 sm:mb-6">
+                {cryptoCurrencies.map((currency) => {
+                  const Icon = currency.icon;
+                  const isSelected = selectedCurrency === currency.value;
+                  const customIcon = walletIcons[currency.value];
+                  return (
+                    <button
+                      key={currency.value}
+                      onClick={() => setSelectedCurrency(currency.value)}
+                      className={"flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-4 rounded-lg border-2 transition-all " + (isSelected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}
+                    >
+                      {customIcon ? (
+                        <img src={customIcon} alt={currency.label} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+                      ) : (
+                        <Icon className={"w-5 h-5 sm:w-6 sm:h-6 " + (isSelected ? "text-primary" : "text-muted-foreground")} />
+                      )}
+                      <span className={"text-xs sm:text-sm font-medium " + (isSelected ? "text-primary" : "text-muted-foreground")}>
+                        {currency.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-          {/* Wallet Address Display */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Wallet Address</label>
-            <div className="flex gap-2">
-              <Input
-                value={walletAddress}
-                readOnly
-                className="font-mono text-xs sm:text-sm flex-1"
-                placeholder={
-                  fetchingAddress ? "Loading..." : "No address available"
-                }
-              />
-              <Button
-                onClick={copyToClipboard}
-                disabled={
-                  !walletAddress ||
-                  walletAddress === "Address not available" ||
-                  fetchingAddress
-                }
-                variant="outline"
-                size="icon"
-                className="flex-shrink-0"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
+              {/* Wallet Address Display */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Wallet Address</label>
+                <div className="flex gap-2">
+                  <Input value={walletAddress} readOnly className="font-mono text-xs sm:text-sm flex-1" placeholder={fetchingAddress ? "Loading..." : "No address available"} />
+                  <Button onClick={copyToClipboard} disabled={!walletAddress || walletAddress === "Address not available" || fetchingAddress} variant="outline" size="icon" className="flex-shrink-0">
+                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Copy this address and send your {selectedCurrency} to it</p>
+              </div>
+            </>
+          ) : (
+            /* Bank Transfer - show admin-configured bank methods */
+            <div className="space-y-3">
+              {fetchingBanks ? (
+                <div className="text-center py-8 text-muted-foreground">Loading bank methods...</div>
+              ) : bankMethods.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No bank deposit methods available yet</p>
+                  <p className="text-xs mt-1">Contact support for bank transfer details</p>
+                </div>
+              ) : (
+                bankMethods.map((bank) => (
+                  <button
+                    key={bank.id}
+                    onClick={() => setSelectedBankId(bank.id)}
+                    className={"w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all " + (selectedBankId === bank.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Building2 className={"w-5 h-5 flex-shrink-0 " + (selectedBankId === bank.id ? "text-primary" : "text-muted-foreground")} />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm">{bank.bank_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{bank.account_name} • {bank.account_number}</p>
+                        {(bank.sort_code || bank.swift_code) && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {bank.sort_code && "Sort: " + bank.sort_code}{bank.sort_code && bank.swift_code && " • "}{bank.swift_code && "SWIFT: " + bank.swift_code}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Copy this address and send your {selectedCurrency} to it
-            </p>
-          </div>
+          )}
         </Card>
 
         {/* Deposit Form */}
         <Card className="p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-            Deposit Details
-          </h2>
-
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Deposit Details</h2>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Amount ({selectedCurrency})
+                Amount ({selectedMethod === "bank" ? "USD" : selectedCurrency})
               </label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="text-lg"
-              />
+              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="text-lg" />
             </div>
-
             <div>
-              <label className="text-sm font-medium mb-2 block">
-                Source (Exchange/Wallet Name)
-              </label>
-              <Input
-                type="text"
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                placeholder="e.g., Binance, Coinbase, Metamask"
-              />
+              <label className="text-sm font-medium mb-2 block">Source (Exchange/Wallet/Bank Name)</label>
+              <Input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="e.g., Binance, Coinbase, Chase Bank" />
             </div>
-
             <div>
-              <label className="text-sm font-medium mb-2 block">
-                Proof of Transaction
-              </label>
+              <label className="text-sm font-medium mb-2 block">Proof of Transaction</label>
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <Input
-                    id="proof-file"
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={handleFileChange}
-                    className="cursor-pointer text-xs sm:text-sm"
-                  />
-                  {proofFile && (
-                    <span className="text-xs sm:text-sm text-muted-foreground truncate">
-                      {proofFile.name}
-                    </span>
-                  )}
+                  <Input id="proof-file" type="file" accept="image/*,.pdf" onChange={handleFileChange} className="cursor-pointer text-xs sm:text-sm" />
+                  {proofFile && <span className="text-xs sm:text-sm text-muted-foreground truncate">{proofFile.name}</span>}
                 </div>
                 {proofPreview && (
-                  <div className="mt-2">
-                    <img
-                      src={proofPreview}
-                      alt="Proof preview"
-                      className="max-w-full h-32 sm:h-40 object-contain rounded border"
-                    />
-                  </div>
+                  <div className="mt-2"><img src={proofPreview} alt="Proof preview" className="max-w-full h-32 sm:h-40 object-contain rounded border" /></div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Upload a screenshot or PDF of your transaction
-                </p>
+                <p className="text-xs text-muted-foreground">Upload a screenshot or PDF of your transaction</p>
               </div>
             </div>
-
-            <LoadingButton
-              onClick={submitDeposit}
-              loading={loading}
-              className="w-full mt-4 text-base h-11"
-            >
+            <LoadingButton onClick={submitDeposit} loading={loading} className="w-full mt-4 text-base h-11">
               <Upload className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Submit Deposit Request</span>
               <span className="sm:hidden">Submit</span>
@@ -406,9 +310,7 @@ export default function DepositPage() {
 
       {/* My Deposit Requests */}
       <Card className="p-4 sm:p-6 mt-4 sm:mt-6">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-          My Deposit Requests
-        </h2>
+        <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">My Deposit Requests</h2>
         <DepositRequestsList userId={user?.id || ""} />
       </Card>
     </div>
@@ -422,89 +324,39 @@ function DepositRequestsList({ userId }: { userId: string }) {
   useEffect(() => {
     if (!userId) return;
     loadRequests();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("deposit_requests_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "deposit_requests",
-          filter: `user_id=eq.${userId}`,
-        },
-        () => loadRequests()
-      )
+    const channel = supabase.channel("deposit_requests_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "deposit_requests", filter: "user_id=eq." + (userId) }, () => loadRequests())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
   async function loadRequests() {
     if (!userId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("deposit_requests")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error("Error loading deposit requests:", error?.message || error?.code || JSON.stringify(error));
-      } else {
-        setRequests(data || []);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
+      const { data, error } = await supabase.from("deposit_requests").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10);
+      if (error) { console.error("Error loading deposit requests:", error?.message || error?.code || JSON.stringify(error)); }
+      else { setRequests(data || []); }
+    } catch (error) { console.error("Error:", error); }
+    finally { setLoading(false); }
   }
 
   if (loading) return <div className="text-muted-foreground">Loading...</div>;
-  if (requests.length === 0)
-    return <div className="text-muted-foreground">No deposit requests yet</div>;
+  if (requests.length === 0) return <div className="text-muted-foreground">No deposit requests yet</div>;
 
   return (
     <div className="space-y-3">
       {requests.map((req) => (
-        <div
-          key={req.id}
-          className="flex items-center justify-between p-4 border rounded-lg"
-        >
+        <div key={req.id} className="flex items-center justify-between p-4 border rounded-lg">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium">
-                {req.amount} {req.currency}
-              </span>
-              <span
-                className={`text-xs px-2 py-1 rounded ${
-                  req.status === "approved"
-                    ? "bg-green-500/20 text-green-500"
-                    : req.status === "rejected"
-                      ? "bg-red-500/20 text-red-500"
-                      : "bg-yellow-500/20 text-yellow-500"
-                }`}
-              >
-                {req.status.toUpperCase()}
-              </span>
+              <span className="font-medium">{req.amount} {req.currency}</span>
+              {req.method_type === "bank" && <Building2 className="w-4 h-4 text-muted-foreground" />}
+              <span className={"text-xs px-2 py-1 rounded " + (req.status === "approved" ? "bg-green-500/20 text-green-500" : req.status === "rejected" ? "bg-red-500/20 text-red-500" : "bg-yellow-500/20 text-yellow-500")}>{req.status.toUpperCase()}</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Source: {req.source || "N/A"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {new Date(req.created_at).toLocaleString()}
-            </p>
-            {req.rejection_reason && (
-              <p className="text-sm text-red-500 mt-1">
-                Reason: {req.rejection_reason}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">Source: {req.source || "N/A"}</p>
+            <p className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleString()}</p>
+            {req.rejection_reason && <p className="text-sm text-red-500 mt-1">Reason: {req.rejection_reason}</p>}
           </div>
         </div>
       ))}

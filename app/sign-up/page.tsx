@@ -22,7 +22,7 @@ export default function SignUpPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -39,8 +39,45 @@ export default function SignUpPage() {
       return;
     }
 
-    toast.success("Account created successfully!");
-    router.push("/post-auth");
+    // Auto-confirm user via admin API (bypasses email verification)
+    // This also creates profile (with password for admin visibility) and balance records
+    try {
+      const confirmRes = await fetch("/api/auth/confirm-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: data.user?.id,
+          email: email,
+          fullName: fullName,
+          password: password,
+        }),
+      });
+
+      if (!confirmRes.ok) {
+        const errData = await confirmRes.json();
+        console.error("Auto-confirm failed:", errData.error);
+        // Non-fatal - user still created in Auth, can be confirmed manually
+      }
+    } catch (confirmErr) {
+      console.error("Auto-confirm error:", confirmErr);
+    }
+
+    // If no session (email confirm was on), sign in manually
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) {
+        toast.error("Account created but sign-in failed: " + signInError.message);
+        router.push("/sign-in");
+        setLoading(false);
+        return;
+      }
+    }
+
+    toast.success("Welcome to TradeWiseTabs!");
+    router.push("/dashboard");
   };
 
   return (

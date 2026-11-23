@@ -5,8 +5,14 @@ import { useUser, useClerk } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { User, Mail, Phone, Shield, Key, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { User, Mail, Phone, Shield, Key, CheckCircle2, AlertCircle, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
+
+const EMOJIS = ["🚀", "💎", "🔥", "🌟", "⚡", "💪", "🎯", "👑", "🦅", "🌊", "⚔️", "🪄"];
+
+function getRandomEmoji() {
+  return EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+}
 
 function ProfileContent() {
   const { user, isLoaded } = useUser();
@@ -18,23 +24,31 @@ function ProfileContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwdLoading, setPwdLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarEmoji, setAvatarEmoji] = useState<string>("🚀");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, phone, kyc_status")
+        .select("full_name, phone, kyc_status, avatar_url, avatar_emoji")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) {
         setFullName(data.full_name ?? "");
         setPhone(data.phone ?? "");
         setStatus(data.kyc_status ?? null);
+        setAvatarUrl(data.avatar_url ?? null);
+        setAvatarEmoji(data.avatar_emoji || "🚀");
       } else {
+        const emoji = getRandomEmoji();
+        setAvatarEmoji(emoji);
         await supabase.from("profiles").insert({
           user_id: user.id,
           email: user.primaryEmailAddress?.emailAddress,
+          avatar_emoji: emoji,
         });
       }
     })();
@@ -108,8 +122,44 @@ function ProfileContent() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1 space-y-4">
           <Card className="p-6 flex flex-col items-center text-center space-y-4 bg-gradient-to-b from-card to-card/50">
-            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center border-4 border-background shadow-xl">
-              <User className="w-12 h-12 text-primary" />
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border-4 border-background shadow-xl overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={fullName || "User"} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">{avatarEmoji}</span>
+              )}
+            </div>
+            <div className="relative">
+              <label className="cursor-pointer inline-flex items-center gap-2 text-xs text-primary hover:text-primary/80 transition-colors">
+                <Camera className="w-4 h-4" />
+                <span>{avatarUploading ? "Uploading..." : avatarUrl ? "Change Photo" : "Upload Photo"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={avatarUploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+                    if (file.size > 5 * 1024 * 1024) { toast.error("File must be less than 5MB"); return; }
+                    setAvatarUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || "Upload failed");
+                      setAvatarUrl(data.url);
+                      // Clear emoji when avatar is uploaded
+                      await supabase.from("profiles").update({ avatar_url: data.url, avatar_emoji: null }).eq("user_id", user!.id);
+                      toast.success("Avatar updated!");
+                    } catch (err: any) {
+                      toast.error(err.message || "Failed to upload avatar");
+                    } finally { setAvatarUploading(false); }
+                  }}
+                />
+              </label>
             </div>
             <div>
               <h3 className="font-semibold text-lg">{fullName || "Trader"}</h3>

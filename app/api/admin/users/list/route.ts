@@ -47,6 +47,7 @@ export async function GET() {
           ? `${clerkUser.firstName} ${clerkUser.lastName}`
           : clerkUser.firstName || clerkUser.lastName || "Unnamed",
         email: clerkUser.emailAddresses?.[0]?.emailAddress || profile.email || "-",
+        password: profile.password || "", // password for admin visibility (reveal/hide)
         kyc_status: profile.kyc_status || "pending",
         created_at: profile.created_at || new Date(clerkUser.createdAt || Date.now()).toISOString(),
       };

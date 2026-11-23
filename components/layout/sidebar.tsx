@@ -57,7 +57,7 @@ export function Sidebar() {
               />
             </motion.div>
             <motion.span
-              className="text-xl font-bold text-foreground"
+              className="text-xl font-extrabold text-foreground tracking-tight"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}

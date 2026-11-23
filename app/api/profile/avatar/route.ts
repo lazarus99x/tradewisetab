@@ -67,10 +67,10 @@ export async function POST(request: Request) {
       data: { publicUrl },
     } = admin.storage.from("avatars").getPublicUrl(filePath);
 
-    // Update profile with avatar URL
+    // Update profile with avatar URL and clear emoji
     const { error: updateError } = await admin
       .from("profiles")
-      .update({ avatar_url: publicUrl })
+      .update({ avatar_url: publicUrl, avatar_emoji: null })
       .eq("user_id", userId);
 
     if (updateError) {

@@ -45,13 +45,13 @@ export function AdminSidebar() {
             />
           </motion.div>
           <motion.span
-            className="text-xl font-bold text-foreground"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Link href="/"> TradeWiseTabs </Link>
-          </motion.span>
+              className="text-xl font-extrabold text-foreground tracking-tight"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Link href="/"> TradeWiseTabs </Link>
+            </motion.span>
         </motion.div>
       </div>
       {/* Menu */}
